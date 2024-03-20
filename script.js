@@ -20,48 +20,61 @@ function createIndexDB(){
     db.addEventListener(
       "success",()=>{
         console.log("Database created successfully");
-      },false)
+      })
   });
+}
+
+
+function openIndexDB(db, format){
+  const IDBtransaction = db.transaction("people", format);
+  const objectStore = IDBtransaction.objectStore("people");
+  return {IDBtransaction,objectStore}
+}
+
+function functionCursor(store){
+  const request = store.openCursor();
+  return new Promise((res,rej)=>{
+    let data = [];
+    request.addEventListener("success",event=>{
+      const cursor = event.target.result;
+      if (cursor){
+        const {key,value} = cursor;
+        data.push(value);
+        cursor.continue()
+      } 
+      else {
+        res(data)
+      }
+    })
+  })
   
 }
 
 function addData(data){
   const indexDB = indexedDB.open("myDataBase",1);
   indexDB.addEventListener("success",()=>{
-    const db = indexDB.result;
-    const transaction = db.transaction("people", "readwrite");
-    const objectStore = transaction.objectStore("people");
-    const request = objectStore.add(data);
+  const {IDBTransaction, objectStore}  = openIndexDB(indexDB.result,"readwrite")
+  const request = objectStore.add(data);
     request.addEventListener("success",()=>{
       console.log(`${data.name} agregado exitosamente`);
-    },false);
-  },false);
+    });
+  });
 }
+
+
 
 function readData(){
   const indexDB = indexedDB.open("myDataBase",1);
-  indexDB.addEventListener("success",()=>{
-    const db = indexDB.result;
-    const transaction = db.transaction("people", "readonly");
-    const objectStore = transaction.objectStore("people");
-    const request = objectStore.openCursor();
-    request.addEventListener("success",(event)=>{
-        const cursor = event.target.result;
-        if (cursor){
-        const {key,value} = cursor
-        profileContainer.appendChild(createProfile(value,key));
-        cursor.continue();
-        }
-    },false);
-  },false);
-}
+  indexDB.addEventListener("success",async()=>{
+    const {objectStore, IDBTransaction} = openIndexDB(indexDB.result,"readonly")
+    let data = await functionCursor(objectStore)
+    console.log(data)
+})}
 
 function deleteData(id){
   const indexDB = indexedDB.open("myDataBase",1);
   indexDB.addEventListener("success",()=>{
-    const db = indexDB.result;
-    const transaction = db.transaction("people", "readwrite");
-    const objectStore = transaction.objectStore("people");
+   const {IDBTransaction, objectStore} = openIndexDB(indexDB.result,"readwrite")
     objectStore.delete(id)
 })}
 
